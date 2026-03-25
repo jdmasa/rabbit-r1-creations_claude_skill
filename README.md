@@ -8,7 +8,7 @@ A Claude skill for building **Rabbit R1 Creations** — tiny HTML/CSS/JS apps th
 
 A Creation is a static web app (HTML + CSS + JS) that runs inside the Rabbit R1's built-in WebView browser. You build it like a regular webpage, but it's designed exclusively for the r1's fixed 240×282px screen and has access to native device features through JavaScript bridge APIs injected by rabbitOS — things like the LLM, microphone, camera, accelerometer, and persistent storage.
 
-Creations are deployed via [rabbit.tech/creations](https://rabbit.tech/creations) and run entirely client-side. No server code runs on the device.
+Creations are deployed using a QR Code and run entirely client-side. No server code runs on the device.
 
 ---
 
@@ -76,7 +76,7 @@ Every output includes a comment block at the top explaining what the file does, 
 
 ## Deployment
 
-Once Claude gives you the files, deploy at **[rabbit.tech/creations](https://rabbit.tech/creations)**. Upload `index.html` (and any companion files), give your Creation a name, and it'll be available on your r1.
+Once Claude gives you the files, deploy using the QR Code. Host your `index.html` (and any companion files) on a server, give your Creation a name, and it'll be available on your r1.
 
 ---
 
