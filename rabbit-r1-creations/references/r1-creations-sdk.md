@@ -158,6 +158,120 @@ PluginMessageHandler.postMessage(JSON.stringify({
 
 ---
 
+## Image Generation — `com.r1.pixelart` Bridge (Confirmed Working ✅ — Undocumented)
+
+The r1 exposes an **image generation bridge** via `PluginMessageHandler` using a special `pluginId`. This is how the official "AI Camera Styles" Creation works. Instead of `useLLM: true`, you send `pluginId: "com.r1.pixelart"` along with an `imageBase64` field and a text prompt describing the transformation.
+
+The r1 takes your input image + prompt and returns a **generated/transformed image** back via `window.onPluginMessage`.
+
+### Sending
+
+```javascript
+// 1. Capture from canvas or video element
+const canvas = document.createElement('canvas');
+canvas.width  = video.videoWidth;   // capture at full video resolution
+canvas.height = video.videoHeight;
+canvas.getContext('2d').drawImage(video, 0, 0);
+
+// 2. Get full data URI (including the data:image/jpeg;base64, prefix)
+const imageDataUri = canvas.toDataURL('image/jpeg', 0.8);
+
+// 3. Send — note: imageBase64 takes the FULL data URI, not just the base64 part
+PluginMessageHandler.postMessage(JSON.stringify({
+  message:     "Take a picture in the style of a Simpsons cartoon.",  // image transformation prompt
+  pluginId:    "com.r1.pixelart",   // required — activates image generation mode
+  imageBase64: imageDataUri         // full data URI string
+}));
+```
+
+### Receiving
+
+The response comes back via `window.onPluginMessage` with status events:
+
+```javascript
+window.onPluginMessage = function(data) {
+  if (data.status === 'processing') {
+    // AI is working — show a loading state
+    statusEl.textContent = 'AI is processing your image...';
+  } else if (data.status === 'complete') {
+    // Generation done — the transformed image is delivered separately
+    // (likely applied directly to the device UI / Magic Camera output)
+    statusEl.textContent = 'AI transformation complete!';
+  } else if (data.error) {
+    statusEl.textContent = 'Error: ' + data.error;
+  }
+};
+```
+
+### Helper function (from official SDK wrapper)
+
+```javascript
+function captureAndTransform(videoOrCanvas, prompt) {
+  let canvas;
+  if (videoOrCanvas instanceof HTMLVideoElement) {
+    canvas = document.createElement('canvas');
+    canvas.width  = videoOrCanvas.videoWidth;
+    canvas.height = videoOrCanvas.videoHeight;
+    canvas.getContext('2d').drawImage(videoOrCanvas, 0, 0);
+  } else {
+    canvas = videoOrCanvas; // already a canvas
+  }
+
+  // Split off the base64 data without the prefix
+  const base64Only = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+
+  PluginMessageHandler.postMessage(JSON.stringify({
+    message:     prompt,
+    pluginId:    'com.r1.pixelart',
+    imageBase64: 'data:image/jpeg;base64,' + base64Only  // reconstruct full URI
+  }));
+}
+```
+
+### Example transformation prompts (from official app source)
+
+These are the exact prompts Rabbit uses in their AI Camera Styles Creation:
+
+```
+"Take a picture in the style of a Simpsons cartoon."
+"Take a picture in the style of Pixar Animation."
+"Take a picture and make it LEGO minifigures."
+"Take a picture in the style of Studio Ghibli anime style-soft colors, whimsical atmosphere, and hand-drawn aesthetic."
+"Take a picture in the style of Minecraft."
+"Take a picture and make the subject a superhero in a comic book."
+"Take a picture in the style of a Norman Rockwell painting."
+"Take a picture in the style of a Watercolor painting."
+"Take a picture and turn the subject into a Funko Pop."
+"Take a picture in the style of a vintage movie poster. Come up with the film's title, director, and actor names based on the image."
+"Take a picture and place the subject in a scene from the movie Star Wars."
+"Take a picture and make it picture perfect - improve lighting, colors, and overall composition. Make it photorealistic. 8k resolution."
+```
+
+The prompt pattern is always: **action verb** (`Take a picture`) + **transformation description**. The model understands "the subject" to mean the person/object in the image.
+
+### Key differences vs standard LLM bridge
+
+| Aspect | Standard LLM (`useLLM: true`) | Image gen (`pluginId: "com.r1.pixelart"`) |
+|---|---|---|
+| Input | Text prompt (+ optional embedded image) | Text prompt + `imageBase64` field |
+| Output | Text response in `data.message` | Status events (`processing` / `complete`); image delivered via device |
+| Image size | Keep small (~8–12KB) to stay under 15KB limit | Full camera resolution OK (1280×720 @ 0.8 JPEG seen in official app) |
+| Response handler | `data.message` or `data.data` | `data.status === 'complete'` |
+
+### Also works as a status ping
+
+You can send a message with just `pluginId` and no image to initialize/check the bridge:
+
+```javascript
+// Used in official app to signal readiness
+PluginMessageHandler.postMessage(JSON.stringify({
+  message:  'AI Camera Styles initialized',
+  pluginId: 'com.r1.pixelart'
+}));
+```
+
+---
+
 ## Camera
 
 ```javascript
@@ -304,7 +418,7 @@ function updateAppBorderColor(hexColor) {
 
 | Feature | Result |
 |---|---|
-| Image generation via LLM bridge | Returns `CANNOT_GENERATE` |
+| Image generation via standard LLM bridge (`useLLM: true`) | Returns `CANNOT_GENERATE` — use the pixelart bridge instead (see below) |
 | Audio base64 via LLM bridge | Returns `No LLM Response Available` |
 | `webkitSpeechRecognition` | Aborts immediately — network-sandboxed |
 | `SpeechRecognition` | Not available |

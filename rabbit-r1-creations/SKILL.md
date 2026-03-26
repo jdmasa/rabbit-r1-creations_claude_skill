@@ -75,7 +75,7 @@ Follow these rules without exception — they reflect real device constraints:
 - No WebGL (Flutter WebView doesn't support it — use Canvas 2D only)
 - No `webkitSpeechRecognition` / `SpeechRecognition` (blocked on device)
 - No audio base64 in LLM bridge messages (returns error)
-- No image generation via LLM bridge (returns `CANNOT_GENERATE`)
+- No image generation via standard `useLLM: true` bridge (returns `CANNOT_GENERATE`) — use `pluginId: "com.r1.pixelart"` instead
 - No HTTP for `getUserMedia` (HTTPS / `*.rabbitos.app` only)
 
 #### Code quality
@@ -105,6 +105,7 @@ Detailed, copy-paste-ready implementations of these patterns are in the SDK doc:
 
 - **PTT Voice Assistant** — `longPressStart` → `MediaRecorder` → Whisper STT → LLM bridge
 - **Vision / Camera** — `getUserMedia` → Canvas frame capture → embed base64 in LLM message
+- **Image Generation / Transformation** — capture frame → send with `pluginId: "com.r1.pixelart"` + `imageBase64` + style prompt → listen for `data.status === 'complete'`
 - **Structured LLM responses** — prompt for JSON → parse `data.data || data.message`
 - **Persistent storage** — `creationStorage.plain.setItem/getItem` with btoa/atob
 - **Accelerometer** — `window.creationSensors.accelerometer.start(cb, { frequency: 60 })`
